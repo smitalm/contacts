@@ -1,43 +1,27 @@
-import React, {Component} from 'react';
-import PropTypes from 'prop-types';
-import escapeRegExp from 'escape-string-regexp'
-import sortBy from 'sort-by'
-import {Link} from "react-router-dom";
-
+import React from 'react'
+import {Link} from "react-router-dom"
 import * as personIcon from './icons/person.svg'
+import reframe from './reframe-hack'
 
-class ContactsList extends Component {
-    static propTypes = {
-        contacts: PropTypes.array.isRequired,
-        onDeleteContact: PropTypes.func.isRequired
-    }
+const ContactsListUi = reframe.ui('ContactsList', {
+    _updateQuery: (query) => {
+        reframe.dispatch(['contacts/query', query])
+    },
 
-    state = {
-        query: ''
-    }
+    _clearQuery: () => {
+        reframe.dispatch(['contacts/query', ''])
+    },
 
-    updateQuery = (query) => {
-        this.setState({query: query});
-    }
+    _deleteContact: (contact) => {
+        reframe.dispatch(['contacts/delete', contact])
+    },
 
-    clearQuery = () => {
-        this.setState({query: ''})
-    }
+    render: function () {
+        const query = this.derefSub(['contacts/query'])
 
-    render() {
-        const {contacts, onDeleteContact} = this.props;
-        const {query} = this.state;
+        const contacts = this.derefSub(['contacts/list/filtered/sorted'])
 
-        let showingContacts
-
-        if (query) {
-            const match = new RegExp(escapeRegExp(query), 'i')
-            showingContacts = contacts.filter((contact) => (match.test(contact.name)))
-        } else {
-            showingContacts = contacts
-        }
-
-        showingContacts.sort(sortBy('name'));
+        const contactsFilteredMessage = this.derefSub(['contacts/list/filtered/message'])
 
         return (
             <div className='list-contacts'>
@@ -47,27 +31,27 @@ class ContactsList extends Component {
                         type='text'
                         placeholder='Search contacts'
                         value={query}
-                        onChange={(event) => this.updateQuery(event.target.value)}
+                        onChange={(event) => this._updateQuery(event.target.value)}
                     />
                     <Link to="/create" className='add-contact'>Add contact</Link>
                 </div>
 
-                {showingContacts.length !== contacts.length && (<div className='showing-contacts'>
-                    <span>Now showing {showingContacts.length} of {contacts.length} total</span>
-                    <button onClick={this.clearQuery}>Show all</button>
+                {contactsFilteredMessage && (<div className='showing-contacts'>
+                    <span>{contactsFilteredMessage}</span>
+                    <button onClick={this._clearQuery}>Show all</button>
                 </div>)}
 
                 <ol className='contact-list'>
-                    {showingContacts.map(contact => (
-                        <li className='contact-list-item' key={contact.id}>
+                    {contacts.map(contact => (
+                        <li className='contact-list-item' key={contact.get('id')}>
                             <div className='contact-avatar' style={{
-                                backgroundImage: `url(${contact.avatarURL || personIcon})`
+                                backgroundImage: `url(${contact.get('avatarURL')|| personIcon})`
                             }}/>
                             <div className='contact-details'>
-                                <p>{contact.name}</p>
-                                <p>{contact.email}</p>
+                                <p>{contact.get('name')}</p>
+                                <p>{contact.get('email')}</p>
                             </div>
-                            <button className='contact-remove' onClick={() => onDeleteContact(contact)}>
+                            <button className='contact-remove' onClick={() => this._deleteContact(contact)}>
                                 Remove
                             </button>
                         </li>
@@ -76,6 +60,6 @@ class ContactsList extends Component {
             </div>
         )
     }
-}
+});
 
-export default ContactsList
+export default ContactsListUi
